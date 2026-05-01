@@ -151,24 +151,20 @@ void AFinalProjectCharacter::Attack()
 		PlayAnimMontage(AttackMontage);
 	}
 
-	// Line trace (raycast) from camera forward
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (!PC) return;
-
-	FVector CamLocation;
-	FRotator CamRotation;
-	PC->GetPlayerViewPoint(CamLocation, CamRotation);
-
-	FVector TraceEnd = CamLocation + CamRotation.Vector() * AttackRange;
+	// Sphere sweep forward from the character (melee).
+	// Using a sphere makes hits reliable without pixel-perfect aim.
+	const FVector Start = GetActorLocation();
+	const FVector End   = Start + GetActorForwardVector() * AttackRange;
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(this);
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(
-		Hit, CamLocation, TraceEnd, ECC_Pawn, Params);
+	const FCollisionShape Sphere = FCollisionShape::MakeSphere(60.f);
+	const bool bHit = GetWorld()->SweepSingleByChannel(
+		Hit, Start, End, FQuat::Identity, ECC_Pawn, Sphere, Params);
 
-	if (bHit && Hit.GetActor())
+	if (bHit && Hit.GetActor() && Hit.GetActor() != this)
 	{
 		// Apply damage using Unreal's damage system
 		UGameplayStatics::ApplyDamage(
